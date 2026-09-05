@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.shortlink.dto.CreateShortLinkRequest;
 import com.example.shortlink.dto.ShortLinkResponse;
+import com.example.shortlink.exception.LinkCodeAlreadyExistsException;
 import com.example.shortlink.repository.ShortLinkRepository;
 
 @Service
@@ -19,7 +20,7 @@ public class ShortLinkService {
 
     public ShortLinkResponse createShortLink(CreateShortLinkRequest request) {
         if (shortLinkRepository.findByCode(request.code()).isPresent()) {
-            return shortLinkRepository.findByCode(request.code()).get();
+            throw new LinkCodeAlreadyExistsException("Code already exists");
         }
         String code = nextCode();
         ShortLinkResponse response = new ShortLinkResponse(request.originalUrl(), 

@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.shortlink.dto.CreateShortLinkRequest;
 import com.example.shortlink.dto.ShortLinkResponse;
+import com.example.shortlink.exception.LinkNotFoundException;
 import com.example.shortlink.service.ShortLinkService;
+
+import jakarta.validation.Valid;
 
 @RestController
 public class ShortLinkController {
@@ -25,7 +28,7 @@ public class ShortLinkController {
     }
 
     @PostMapping ("/api/links")
-    public ShortLinkResponse createShortLink(@RequestBody CreateShortLinkRequest request) {
+    public ShortLinkResponse createShortLink(@Valid @RequestBody CreateShortLinkRequest request) {
         return shortLinkService.createShortLink(request);
     }
     
@@ -33,14 +36,14 @@ public class ShortLinkController {
     public ResponseEntity<Void> redirectToOriginalUrl(@PathVariable String code) {
         Optional<ShortLinkResponse> shortLinkResponse = shortLinkService.findByCode(code);
         System.out.println("shortLinkResponse: " + shortLinkResponse);
-        if (shortLinkResponse.isPresent()) {
-            String originalUrl = shortLinkResponse.get().originalUrl();
-            return ResponseEntity
-                    .status(HttpStatus.FOUND)
-                    .location(URI.create(originalUrl))
-                    .build();
-        } else {
-            return ResponseEntity.notFound().build();
+        if (!shortLinkResponse.isPresent()) {
+            throw new LinkNotFoundException("Code not found");
         }
+        String originalUrl = shortLinkResponse.get().originalUrl();
+        return ResponseEntity
+                .status(HttpStatus.FOUND)
+                .location(URI.create(originalUrl))
+                .build();
+        
     }
 }
