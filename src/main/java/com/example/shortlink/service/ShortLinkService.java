@@ -1,6 +1,7 @@
 package com.example.shortlink.service;
 
 import java.time.Instant;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
@@ -20,9 +21,26 @@ public class ShortLinkService {
         if (shortLinkRepository.findByCode(request.code()).isPresent()) {
             return shortLinkRepository.findByCode(request.code()).get();
         }
-        ShortLinkResponse response = new ShortLinkResponse(request.originalUrl(), request.code(),
-                "http://short.link/" + request.code(), Instant.now().toString());
+        String code = nextCode();
+        ShortLinkResponse response = new ShortLinkResponse(request.originalUrl(), 
+                code,
+                "localhost:8080/" + code,              
+                Instant.now().toString());
         shortLinkRepository.save(response);
         return response;
     }
+
+    public Optional<ShortLinkResponse> findByCode(String code) {
+        return shortLinkRepository.findByCode(code);
+    }
+
+
+    private long sequence = 0;
+
+    public String nextCode() {
+        sequence++;
+        return String.valueOf(sequence);
+    }
 }
+
+
