@@ -4,11 +4,13 @@ package com.example.shortlink.repository;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import com.example.shortlink.dto.ShortLinkResponse;
 
-@Repository 
+@Repository
+@Profile ("memory")
 public class InMemoryShortLinkRepository implements ShortLinkRepository {
     private final ConcurrentHashMap<String, ShortLinkResponse> shortLinks = new ConcurrentHashMap<>();
 
