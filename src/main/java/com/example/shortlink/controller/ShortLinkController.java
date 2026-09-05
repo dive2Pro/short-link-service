@@ -7,14 +7,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.shortlink.dto.CreateShortLinkRequest;
 import com.example.shortlink.dto.ShortLinkResponse;
+import com.example.shortlink.service.ShortLinkService;
 
 @RestController
 @RequestMapping ("/api")
 public class ShortLinkController {
-     
+    private final ShortLinkService shortLinkService;
+
+    public ShortLinkController(ShortLinkService shortLinkService) {
+        this.shortLinkService = shortLinkService;
+    }
 
     @PostMapping ("/links")
     public ShortLinkResponse createShortLink(@RequestBody CreateShortLinkRequest request) {
-        return new ShortLinkResponse(request.originalUrl(), request.code(), "http://localhost:8080/" + request.code(), java.time.LocalDateTime.now().toString());
+        return shortLinkService.createShortLink(request);
     }
 }
