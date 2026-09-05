@@ -13,7 +13,7 @@ import com.example.shortlink.service.ShortLinkService;
 @RequestMapping ("/api")
 public class ShortLinkController {
     private final ShortLinkService shortLinkService;
-
+    
     public ShortLinkController(ShortLinkService shortLinkService) {
         this.shortLinkService = shortLinkService;
     }
