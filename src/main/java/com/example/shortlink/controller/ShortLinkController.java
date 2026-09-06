@@ -37,6 +37,7 @@ public class ShortLinkController {
         Optional<ShortLinkResponse> shortLinkResponse = shortLinkService.findByCode(code);
         System.out.println("shortLinkResponse: " + shortLinkResponse);
         if (!shortLinkResponse.isPresent()) {
+            // TODO metrics: increment shortlink.redirect.not_found here.
             throw new LinkNotFoundException("Code not found");
         }
         String originalUrl = shortLinkResponse.get().originalUrl();

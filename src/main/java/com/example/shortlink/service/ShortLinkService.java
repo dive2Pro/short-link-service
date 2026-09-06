@@ -32,8 +32,10 @@ public class ShortLinkService {
         if (request.code() != null && !request.code().isBlank()) {
             ShortLinkResponse response = buildResponse(request.originalUrl(), request.code());
             if (!shortLinkRepository.saveIfAbsent(response)) {
+                // TODO metrics: increment shortlink.custom_code.conflicts here.
                 throw new LinkCodeAlreadyExistsException(": " + request.code());
             }
+            // TODO metrics: increment shortlink.created with type=custom here.
             return response;
         }
 
@@ -41,9 +43,12 @@ public class ShortLinkService {
         for (int attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
             ShortLinkResponse response = buildResponse(request.originalUrl(), shortCodeGenerate.generateShortCode());
             if (shortLinkRepository.saveIfAbsent(response)) {
+                // TODO metrics: increment shortlink.created with type=generated here.
                 return response;
             }
+            // TODO metrics: increment shortlink.code_collisions here before retrying.
         }
+        // TODO metrics: increment shortlink.code_generation_exhausted here.
         throw new ShortCodeGenerationException("Could not allocate a unique short code");
     }
 
