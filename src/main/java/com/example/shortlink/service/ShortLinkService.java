@@ -12,30 +12,33 @@ import com.example.shortlink.exception.LinkCodeAlreadyExistsException;
 import com.example.shortlink.exception.ShortCodeGenerationException;
 import com.example.shortlink.repository.ShortLinkRepository;
 
+import io.micrometer.core.instrument.MeterRegistry;
+
 @Service
 public class ShortLinkService {
     private static final int MAX_GENERATION_ATTEMPTS = 5;
     private final ShortLinkRepository shortLinkRepository;
     private final ShortCodeGenerate shortCodeGenerate;
+    private final MeterRegistry meterRegistry;
 
-    public ShortLinkService(ShortLinkRepository shortLinkRepository) {
-        this(shortLinkRepository, new ShortCodeGenerate());
-    }
 
     @Autowired
-    public ShortLinkService(ShortLinkRepository shortLinkRepository, ShortCodeGenerate shortCodeGenerate) {
+    public ShortLinkService(ShortLinkRepository shortLinkRepository, ShortCodeGenerate shortCodeGenerate, MeterRegistry meterRegistry) {
         this.shortLinkRepository = shortLinkRepository;
         this.shortCodeGenerate = shortCodeGenerate;
+        this.meterRegistry = meterRegistry;
     }
 
     public ShortLinkResponse createShortLink(CreateShortLinkRequest request) {
         if (request.code() != null && !request.code().isBlank()) {
             ShortLinkResponse response = buildResponse(request.originalUrl(), request.code());
             if (!shortLinkRepository.saveIfAbsent(response)) {
-                // TODO metrics: increment shortlink.custom_code.conflicts here.
+
+                meterRegistry.counter("shortlink.custom_code.conflicts").increment();
                 throw new LinkCodeAlreadyExistsException(": " + request.code());
             }
-            // TODO metrics: increment shortlink.created with type=custom here.
+
+            meterRegistry.counter("shortlink.created", "type", "custom").increment();
             return response;
         }
 
@@ -43,12 +46,12 @@ public class ShortLinkService {
         for (int attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
             ShortLinkResponse response = buildResponse(request.originalUrl(), shortCodeGenerate.generateShortCode());
             if (shortLinkRepository.saveIfAbsent(response)) {
-                // TODO metrics: increment shortlink.created with type=generated here.
+                meterRegistry.counter("shortlink.created", "type", "generated").increment();
                 return response;
             }
-            // TODO metrics: increment shortlink.code_collisions here before retrying.
+            meterRegistry.counter("shortlink.code_collisions").increment(); 
         }
-        // TODO metrics: increment shortlink.code_generation_exhausted here.
+        meterRegistry.counter("shortlink.code_generation_exhausted").increment();
         throw new ShortCodeGenerationException("Could not allocate a unique short code");
     }
 

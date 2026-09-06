@@ -17,14 +17,17 @@ import com.example.shortlink.dto.ShortLinkResponse;
 import com.example.shortlink.exception.LinkNotFoundException;
 import com.example.shortlink.service.ShortLinkService;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.Valid;
 
 @RestController
 public class ShortLinkController {
     private final ShortLinkService shortLinkService;
+    private final MeterRegistry meterRegistry;
 
-    public ShortLinkController(ShortLinkService shortLinkService) {
+    public ShortLinkController(ShortLinkService shortLinkService, MeterRegistry meterRegistry) {
         this.shortLinkService = shortLinkService;
+        this.meterRegistry = meterRegistry;
     }
 
     @PostMapping ("/api/links")
@@ -37,7 +40,7 @@ public class ShortLinkController {
         Optional<ShortLinkResponse> shortLinkResponse = shortLinkService.findByCode(code);
         System.out.println("shortLinkResponse: " + shortLinkResponse);
         if (!shortLinkResponse.isPresent()) {
-            // TODO metrics: increment shortlink.redirect.not_found here.
+            meterRegistry.counter("shortlink.redirect.not_found").increment();
             throw new LinkNotFoundException("Code not found");
         }
         String originalUrl = shortLinkResponse.get().originalUrl();
