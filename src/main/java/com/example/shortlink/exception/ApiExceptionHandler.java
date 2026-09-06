@@ -45,4 +45,12 @@ public class ApiExceptionHandler {
                 .status(HttpStatus.CONFLICT)
                 .body(error);
     }
+
+    @ExceptionHandler(ShortCodeGenerationException.class)
+    public ResponseEntity<Map<String, String>> handleShortCodeGenerationException(
+            ShortCodeGenerationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", ex.getMessage()));
+    }
 }

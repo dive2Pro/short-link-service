@@ -10,4 +10,6 @@ public interface ShortLinkJpaRepository
           extends JpaRepository<ShortLinkEntity, Long> {
 
       Optional<ShortLinkEntity> findByCode(String code);
+
+      ShortLinkEntity saveAndFlush(ShortLinkEntity entity);
   }

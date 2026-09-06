@@ -9,8 +9,8 @@ public record CreateShortLinkRequest(
     @NotBlank(message = "Original URL must not be blank")
     @URL (message = "Original URL must be a valid URL")
         String originalUrl,
-        // @Pattern(regexp = "^[a-zA-Z0-9_-]{4,16}$", 
-        //         message = "Code must be 4-16 characters long and can only contain letters, numbers, hyphens, and underscores")            
+        @Pattern(regexp = "^$|^[a-zA-Z0-9_-]{4,16}$",
+                message = "Code must be empty or 4-16 characters long and can only contain letters, numbers, hyphens, and underscores")
         String code) {
     
 }

@@ -19,6 +19,11 @@ public class InMemoryShortLinkRepository implements ShortLinkRepository {
         return Optional.ofNullable(shortLinks.get(code));
     }
 
+    @Override
+    public boolean saveIfAbsent(ShortLinkResponse shortLinkResponse) {
+        return shortLinks.putIfAbsent(shortLinkResponse.code(), shortLinkResponse) == null;
+    }
+
     @Override 
     public void save(ShortLinkResponse shortLinkResponse) {
         shortLinks.put(shortLinkResponse.code(), shortLinkResponse);
