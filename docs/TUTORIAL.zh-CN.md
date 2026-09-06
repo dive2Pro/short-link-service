@@ -149,9 +149,38 @@ curl -I http://localhost:8080/hello
 
 验收：重启服务后仍能跳转已创建的短链；并发创建同一短码时，数据库唯一索引是最终防线。
 
-## 后续扩展
+## 第 9 章：并发不是“加 synchronized”
 
-依次做访问计数、过期时间、禁用链接、按用户隔离、限流、Redis 缓存和 Docker Compose。每次扩展先写 API 契约和一条失败用例，再写实现。
+目标：理解为什么“先查短码是否存在，再保存”在多个请求同时到达时不可靠。先为 Repository 设计一个原子写入契约，例如 `saveIfAbsent`：内存实现用 `putIfAbsent`，PostgreSQL 依靠唯一约束兜底。
+
+练习：编写 64 个并发请求同一短码的测试。只有一个请求应成功，其余得到冲突。`AtomicLong` 只解决单实例内生成器的竞争；多实例必须依靠共享 ID 源与数据库唯一约束。
+
+## 第 10 章：可观测性不是打印日志
+
+目标：引入 Actuator，区分“进程活着”“能接流量”“依赖是否正常”。
+
+```bash
+curl http://localhost:8080/actuator/health
+curl http://localhost:8080/actuator/health/liveness
+curl http://localhost:8080/actuator/health/readiness
+curl http://localhost:8080/actuator/metrics
+```
+
+思考：数据库短暂故障时，为什么不应让所有实例的 liveness 同时失败并被重启？哪些指标真正代表用户体验？
+
+## 第 11 章：缓存、超时与降级
+
+目标：为读取短链设计 cache-aside 接口，并用 TTL 内存实现先验证语义，再替换成 Redis。
+
+约束：缓存未命中可回源数据库；缓存不可用也可有限回源；数据库不可用时快速 503；不能无限重试或无限排队。分别为缓存穿透、击穿、雪崩写一条测试或故障演练。
+
+## 第 12 章：从应用到系统设计
+
+阅读 [ARCHITECTURE-LAB.zh-CN.md](ARCHITECTURE-LAB.zh-CN.md)。它涵盖容量目标、读写分离、限流隔离、消息幂等、监控告警、测试、容灾、安全与交付。按其中“建议的学习顺序”逐步实现，每一阶段先定义 SLO 与失败行为，再选择组件。
+
+## 第 13 章：战争模拟与事故复盘
+
+阅读并执行 [WAR-GAME-LAB.zh-CN.md](WAR-GAME-LAB.zh-CN.md)。从建立容量基线开始，逐步模拟并发冲突、Redis 故障、慢依赖、连接池耗尽、网络丢包、磁盘水位和数据库恢复。每次实验都必须有停止条件、恢复步骤、指标记录与复盘结论。
 
 ## 推荐节奏
 
