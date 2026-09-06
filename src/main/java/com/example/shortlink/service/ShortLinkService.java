@@ -68,7 +68,9 @@ public class ShortLinkService {
         if (cachedResponse.isPresent()) {
             return cachedResponse;
         }
-        return shortLinkRepository.findByCode(code);
+        Optional<ShortLinkResponse> response = shortLinkRepository.findByCode(code);
+        response.ifPresent(found -> linkLookupCache.put(code, found));
+        return response;
     }
 
     private ShortLinkResponse buildResponse(String originalUrl, String code) {
