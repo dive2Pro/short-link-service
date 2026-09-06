@@ -21,12 +21,18 @@ public class ShortLinkService {
     private final ShortCodeGenerate shortCodeGenerate;
     private final MeterRegistry meterRegistry;
 
+    private final LinkLookupCache linkLookupCache;
 
     @Autowired
-    public ShortLinkService(ShortLinkRepository shortLinkRepository, ShortCodeGenerate shortCodeGenerate, MeterRegistry meterRegistry) {
+    public ShortLinkService(
+                ShortLinkRepository shortLinkRepository,
+                ShortCodeGenerate shortCodeGenerate,
+                MeterRegistry meterRegistry,
+                LinkLookupCache linkLookupCache) {
         this.shortLinkRepository = shortLinkRepository;
         this.shortCodeGenerate = shortCodeGenerate;
         this.meterRegistry = meterRegistry;
+        this.linkLookupCache = linkLookupCache;
     }
 
     public ShortLinkResponse createShortLink(CreateShortLinkRequest request) {
@@ -39,6 +45,7 @@ public class ShortLinkService {
             }
 
             meterRegistry.counter("shortlink.created", "type", "custom").increment();
+            linkLookupCache.put(request.code(), response);
             return response;
         }
 
@@ -47,6 +54,7 @@ public class ShortLinkService {
             ShortLinkResponse response = buildResponse(request.originalUrl(), shortCodeGenerate.generateShortCode());
             if (shortLinkRepository.saveIfAbsent(response)) {
                 meterRegistry.counter("shortlink.created", "type", "generated").increment();
+                linkLookupCache.put(response.code(), response);
                 return response;
             }
             meterRegistry.counter("shortlink.code_collisions").increment(); 
@@ -56,6 +64,10 @@ public class ShortLinkService {
     }
 
     public Optional<ShortLinkResponse> findByCode(String code) {
+        Optional<ShortLinkResponse> cachedResponse = linkLookupCache.get(code);
+        if (cachedResponse.isPresent()) {
+            return cachedResponse;
+        }
         return shortLinkRepository.findByCode(code);
     }
 

@@ -12,7 +12,7 @@ import com.example.shortlink.repository.InMemoryShortLinkRepository;
 class ShortLinkServiceTest {
     @Test
     void createsAnAutomaticTenCharacterCode() {
-        ShortLinkService service = new ShortLinkService(new InMemoryShortLinkRepository());
+        ShortLinkService service = new ShortLinkService(new InMemoryShortLinkRepository(), null, null, null);
 
         var response = service.createShortLink(new CreateShortLinkRequest("https://example.com", null));
 
@@ -22,7 +22,7 @@ class ShortLinkServiceTest {
 
     @Test
     void rejectsDuplicateCustomCode() {
-        ShortLinkService service = new ShortLinkService(new InMemoryShortLinkRepository());
+        ShortLinkService service = new ShortLinkService(new InMemoryShortLinkRepository(), null, null, null);
         var request = new CreateShortLinkRequest("https://example.com", "custom-code");
 
         service.createShortLink(request);
