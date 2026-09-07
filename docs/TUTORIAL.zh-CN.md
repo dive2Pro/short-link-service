@@ -170,9 +170,47 @@ curl http://localhost:8080/actuator/metrics
 
 ## 第 11 章：缓存、超时与降级
 
-目标：为读取短链设计 cache-aside 接口，并用 TTL 内存实现先验证语义，再替换成 Redis。
+目标：为读取短链设计 cache-aside 接口，并用 TTL 内存实现先验证语义，再替换成 Redis。替换完成后，为它加上超时与降级，并逐一演练缓存穿透、击穿、雪崩。
 
-约束：缓存未命中可回源数据库；缓存不可用也可有限回源；数据库不可用时快速 503；不能无限重试或无限排队。分别为缓存穿透、击穿、雪崩写一条测试或故障演练。
+你已经完成了前半段：`LinkLookupCache` 接口、TTL 内存实现，以及 `ShortLinkService.findByCode` 里的 cache-aside 三步。本章从"把内存实现换成 Redis"开始。换之前先回答为什么值得换：内存缓存在每个 JVM 里各存一份，多实例时命中率被摊薄，实例一重启缓存全部蒸发，重启后的回源流量会一起砸向数据库。Redis 是所有实例共享的独立进程，这两类问题都不存在。
+
+你会学到：`spring-boot-starter-data-redis`、`RedisTemplate` 与序列化、TTL 语义、command timeout、降级路径，以及穿透/击穿/雪崩三种故障的本质区别。
+
+手敲顺序：
+
+1. 在 `pom.xml` 加 `spring-boot-starter-data-redis`，在 `compose.yml` 加一个 `redis` 服务（对照第 8 章 PostgreSQL 的做法），`docker compose up -d redis` 后确认端口。
+2. 写 `RedisLinkLookupCache implements LinkLookupCache`：`put` 写入并设置 TTL，`get` 读取。TTL 不要写死在代码里，放进 `application.properties`。
+3. 把 `InMemoryLinkLookupCache` 上的 `@Component` 摘掉。此时 `ShortLinkService` 一行都不用改——这就是第 4 章依赖倒置在这章的回报。
+4. 用 `redis-cli MONITOR` 或 `KEYS`/`TTL` 命令亲眼确认读写真的发生在 Redis 里，而不是只看接口返回。
+
+约束：
+
+- 缓存未命中可回源数据库；缓存不可用也可有限回源；数据库不可用时快速 503；不能无限重试或无限排队。
+- Redis 每个操作必须有 command timeout。没有超时的缓存在 Redis 变慢时会占满 Tomcat 工作线程——这是慢依赖比死依赖更危险的原因。
+- Redis 挂掉时 `get` 抛异常，业务路径的正确反应是"当作未命中，回源数据库"，而不是把异常直接抛给用户。同时打一个缓存降级指标（对照第 10 章 metrics 的做法）。
+- 序列化不要依赖 JDK 默认序列化。存 JSON 或直接存原始 URL 字符串都行，想清楚 `ShortLinkResponse` 里的 `createdAt` 是否真的需要进缓存。
+
+验收：
+
+```bash
+# 创建后跳转正常
+curl -i http://localhost:8080/hello
+# 缓存确实生效
+docker compose exec redis redis-cli TTL shortlink:cache:hello
+# Redis 停掉后跳转仍然可用（回源数据库）
+docker compose stop redis && curl -i http://localhost:8080/hello
+docker compose start redis
+```
+
+三种故障，各写一条测试或故障演练：
+
+- **穿透**：高并发请求随机不存在短码，每次都穿过缓存打到数据库。防线是短 TTL 负缓存（把"查过但不存在"也缓存几秒），或布隆过滤器。验收信号：404 请求的数据库 QPS 不随攻击线性增长。
+- **击穿**：某个热点短码的缓存恰好过期的瞬间，大量并发同时回源重建。防线是 single-flight（同一时刻只放一个请求回源）或逻辑过期。验收信号：热点 key 过期时数据库只收到个位数查询。先用指标证明击穿存在，再上防线，不要一上来就加分布式锁。
+- **雪崩**：大批短码用完全相同的 TTL 写入，同一时刻集体到期。防线是 TTL 加随机抖动（例如基准 5 分钟 ± 30 秒）。验收信号：批量写入后到期时刻的 p99 与连接池不出现尖峰。
+
+思考：你的 `findByCode` 里缓存、数据库、异常降级三条路径，各自的超时预算加起来是多少？一次跳转的总 deadline 应该由谁决定？Redis 恢复后，缓存命中率需要多久回到基线，这个"回暖期"里数据库在承受什么？
+
+完成本章后进入 [WAR-GAME-LAB.zh-CN.md](WAR-GAME-LAB.zh-CN.md) 实验 3，用真实的 Redis 故障重放本章的降级设计。
 
 ## 第 12 章：从应用到系统设计
 
