@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.example.shortlink.dto.ShortLinkResponse;
 
-@Component
+
 public class InMemoryLinkLookupCache implements LinkLookupCache {
     private static final long CACHE_DURATION_MILLIS = 5 * 60 * 1000L;
 
